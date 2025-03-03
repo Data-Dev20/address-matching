@@ -1,57 +1,72 @@
 import pandas as pd
+import re
+from fuzzywuzzy import process
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Sample dataset
-data = {
-    "Address": [
-        "SHOP NO 18 SHYAMKAMAL C AGARWARL MARKET NEAR SAHAKARI BAHNDAR VILE PARLE EAST",
-        "SHOP NO 24 B WING SHYAMKAMAL CHS LTD AGARWAL MARKET MONGHIAI ROAD VILE PARLE EAST",
-        "CO B G MEDICAL R N 18 FIRST FLOOR MARATHA MANDIRS BABASAHEB GAWDE HOSPITAL M G ROAD",
-        "SHOP NO 19 D WING SHYAM KAMAL CO OP HOS SOC LTD AGARWAL MARKET VILEPARLE EAST OPP SAHAKARI BHANDAR",
-        "SHOP NO 97 MUNICIPAL MARKET BELOW DINANATH MANGESHKAR HALL TEJPAL ROAD VILE PARLE EAST",
-        "4 GALAXY ARCADE 52 M G ROAD VILEPARLE EAST",
-        "SHOP NO 5 GALAXY ARCADE 52 M G ROAD VILEPARLE EAST",
-        "SHOP NO 5 GR FLR ANAND BLDG ARUNESHWAR CHS LTD PLOT NO 225 226 OPP SHIV SAGAR HOTEL SHRIDDANAND RD VILE PARLE E",
-        "23 C SHYAM KAMAL BUILDING AGARWAL MARKET BEHIND DINANATH MANGESHKAR HALL VILEPARLE EAST",
-        "NAND PREM SHOPPING CENTRE NEHRU ROAD VILE PARLE EAST NEHRU ROAD VILE PARLE EAST",
-        "1 NAND PREM SHOPPING CENTRE NEHRU RD VILE PARLE E",
-        "SHOP NO 5 A AND 5B GROUND FLOOR KRISHNA COTTAGE BUILDING HANUMAN ROAD VILEPARLE EAST",
-        "SHOP NO 5 A AND 5B GROUND FLOOR KRISHNA COTTAGE BUILDING HANUMAN ROAD VILEPARLE EAST",
-        "SHOP NO 5 A AND 5B GROUND FLOOR KRISHNA COTTAGE BUILDING HANUMAN ROAD VILEPARLE EAST",
-        "SHOP NO 5 A AND 5B GROUND FLOOR KRISHNA COTTAGE BUILDING HANUMAN ROAD VILEPARLE EAST",
-        "SHOP NO 7 GROUND FLOOR OM SAI NIWAS CHSL SUBHASH RD OPP RAM MANDIR VILEPARLE EAST",
-        "6 TWINKLE APARTMENT OPP KAMAT CLUB LOKHANDWALA ANDHERI WEST MUMBAIMUMBAI MAHARASHTRA",
-        "9 GR FLOOR SNEHA BLDG B WING APNA GHARUNIT NO 11 CHS LTD LOKHANDWALA COMPLEX ANDHARI WEST",
-        "9 GR FLOOR SNEHA BLDG B WING APNA GHARUNIT NO 11 CHS LTD LOKHANDWALA COMPLEX ANDHARI WEST",
-        "A WING 101 CRYSTAL PLAZA ground floor new LINK ROADopp infinity mall Andheri West",
-        "A WING 101 CRYSTAL PLAZA ground floor new LINK ROADopp infinity mall Andheri West",
-        "GROUND FLOOR SHOP NO 1 AND 2 PARUL CO OPHOUSING SOCIETY LTD  VEERA DESAI ROSD ANDHERI WEST",
-        "GROUND FLOOR SHOP NO 1 AND 2 PARUL CO OPHOUSING SOCIETY LTD  VEERA DESAI ROSD ANDHERI WEST",
-        "GROUND FLOOR SHOP NO 1 AND 2 PARUL CO OPHOUSING SOCIETY LTD  VEERA DESAI ROSD ANDHERI WEST",
-        "23 C SHYAM KAMAL BUILDING AGARWAL MARKET BEHIND DINANATH MANGESHKAR HALL VILEPARLE EAST"
+# Load dataset
+df = pd.read_excel('D:/data for address/masterdata2025.xlsx')
 
-    ]
-}
+# Preprocess Address Column
+def clean_address(address):
+    address = str(address).strip()
+    address = re.sub(r'[^a-zA-Z0-9\s]', '', address)  # Remove special characters
+    address = re.sub(r'\s+', ' ', address)  # Normalize spaces
+    common_replacements = {
+        'rd': 'road', 'st': 'street', 'ave': 'avenue', 'blvd': 'boulevard',
+        'svrd': 'sv road', 'mg rd': 'mg road', 'jdbc': 'junction'
+    }
+    for key, val in common_replacements.items():
+        address = re.sub(fr'\b{key}\b', val, address, flags=re.IGNORECASE)
+    return address
 
-df = pd.DataFrame(data)
+df['Address'] = df['Address'].apply(clean_address)
 
-# Extract distinct keywords
-def extract_keywords(addresses):
-    vectorizer = TfidfVectorizer(stop_words='english')
+# Extract Keywords including city and pincode
+def extract_keywords(addresses, cities, pincodes):
+    vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
     vectorizer.fit_transform(addresses)
-    return sorted(set(vectorizer.get_feature_names_out()))
+    address_keywords = set(vectorizer.get_feature_names_out())
 
-keywords = extract_keywords(df["Address"])
-print("Distinct Keywords:", keywords)
+    # Combine with city names and pincodes
+    all_keywords = address_keywords.union(set(cities)).union(set(pincodes))
+    return sorted(all_keywords)
 
-# Function to search for related addresses
-def search_addresses(df, query):
-    query = query.lower()
-    return df[df["Address"].str.lower().str.contains(query, na=False)]
+# Extract distinct cities and pincodes
+cities = df['R_City'].astype(str).unique()
+pincodes = df['Pincode'].astype(str).unique()
 
-# Example search
+keywords = extract_keywords(df['Address'], cities, pincodes)
+
+# Save extracted keywords
+keywords_df = pd.DataFrame(keywords, columns=['Keyword'])
+keywords_df.to_csv('keywords.csv', index=False)
+
+# Improved Search Function
+def search_addresses(df, query, threshold=90):
+    query = query.strip()
+    
+    # **1. Try Exact Match First**
+    exact_matches = df[df['Address'].str.contains(re.escape(query), regex=True, case=False, na=False)]
+    if not exact_matches.empty:
+        return exact_matches
+
+    # **2. Use Fuzzy Matching for Partial Matches**
+    fuzzy_matches = []
+    for index, address in df['Address'].items():
+        match_score = process.extract(query, [address], limit=1)  # Get top match
+        if match_score and match_score[0][1] >= threshold:
+            fuzzy_matches.append(index)
+    
+    return df.loc[fuzzy_matches] if fuzzy_matches else pd.DataFrame(columns=df.columns)  # Ensure DataFrame output
+
+# Example input query
 query = input("Enter a keyword to search for related addresses: ")
 result = search_addresses(df, query)
 
-print("\nRelated Addresses:")
-print(result)
+# Save result
+result.to_csv('filtered_addresses.csv', index=False)
+
+print(f"Filtered addresses saved to filtered_addresses.csv - Total Matches: {len(result)}")
+
+# Display top 10 matches
+print(result.head(10))

@@ -1,72 +1,69 @@
 import pandas as pd
-import spacy
+import re
+from fuzzywuzzy import process
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
-# Load spaCy NLP model (English)
-nlp = spacy.load("en_core_web_sm")
+# Load dataset
+df = pd.read_excel('D:/data for address/masterdata2025.xlsx')
 
-# Load the CSV file
-df = pd.read_csv("D:/data for address/master.csv")  # Ensure 'Address' column exists
-df.dropna(subset=["Address"], inplace=True)  # Remove null addresses
+# Preprocess Address Column
+def clean_address(address):
+    address = str(address).strip()
+    address = re.sub(r'[^a-zA-Z0-9\s]', '', address)  # Remove special characters
+    address = re.sub(r'\s+', ' ', address)  # Normalize spaces
+    common_replacements = {
+        'rd': 'road', 'st': 'street', 'ave': 'avenue', 'blvd': 'boulevard',
+        'svrd': 'sv road', 'mg rd': 'mg road', 'jdbc': 'junction'
+    }
+    for key, val in common_replacements.items():
+        address = re.sub(fr'\b{key}\b', val, address)
+    return address
 
-# **Step 1: Preprocess Addresses Using NLP**
-def preprocess_text(text):
-    """Cleans and normalizes an address using NLP."""
-    doc = nlp(text.lower().strip())  # Tokenize and lowercase
-    processed_tokens = [token.lemma_ for token in doc if not token.is_stop and token.is_alpha]  # Remove stopwords & lemmatize
-    return " ".join(processed_tokens)
+df['Address'] = df['Address'].apply(clean_address)
 
-# Apply preprocessing to the Address column
-df["clean_address"] = df["Address"].apply(preprocess_text)
+# Extract Keywords including city and pincode
+def extract_keywords(addresses, cities, pincodes):
+    vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
+    vectorizer.fit_transform(addresses)
+    address_keywords = set(vectorizer.get_feature_names_out())
 
-# **Step 2: Match Addresses Using TF-IDF + Cosine Similarity**
-def find_matching_addresses(search_query, df, top_n=10, min_similarity=0.50):
-    """
-    Finds the best matching addresses using TF-IDF and Cosine Similarity.
+    # Combine with city names and pincodes
+    all_keywords = address_keywords.union(set(cities)).union(set(pincodes))
+    return sorted(all_keywords)
 
-    Parameters:
-    - search_query: User input query (full phrase)
-    - df: DataFrame containing cleaned addresses
-    - top_n: Number of top matches to consider (default: 10)
-    - min_similarity: Minimum similarity score to keep results (default: 0.50)
+# Extract distinct cities and pincodes
+cities = df['R_City'].astype(str).unique()
+pincodes = df['Pincode'].astype(str).unique()
 
-    Returns:
-    - DataFrame of matched addresses filtered by similarity threshold
-    """
-    # Preprocess search query
-    search_query = preprocess_text(search_query)
+keywords = extract_keywords(df['Address'], cities, pincodes)
 
-    # Combine search query with address dataset
-    all_texts = df["clean_address"].tolist() + [search_query]
+# Save extracted keywords
+keywords_df = pd.DataFrame(keywords, columns=['Keyword'])
+keywords_df.to_csv('keywords.csv', index=False)
 
-    # Vectorize using TF-IDF
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(all_texts)
+# Improved Search Function
+def search_addresses(df, query, threshold=90):
+    exact_matches = df[df['Address'].str.contains(fr'\b{re.escape(query)}\b', regex=True, na=False)]
 
-    # Compute cosine similarity between search query and all addresses
-    similarity_scores = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1]).flatten()
+    if not exact_matches.empty:
+        return exact_matches
 
-    # Add similarity scores to DataFrame
-    df["Similarity"] = similarity_scores
+    # If no exact match, apply fuzzy matching with a high threshold
+    matches = []
+    for address in df['Address']:
+        match_score = process.extractOne(query, [address])
+        if match_score and match_score[1] >= threshold:
+            matches.append(address)
+    return df[df['Address'].isin(matches)]
 
-    # Filter results based on similarity threshold (50% or more)
-    matched_df = df[df["Similarity"] >= min_similarity].sort_values(by="Similarity", ascending=False)
+# Example input query
+query = input("Enter a keyword to search for related addresses: ")
+result = search_addresses(df, query)
 
-    return matched_df[["Address", "Similarity"]]
+# Save result
+result.to_csv('filtered_addresses.csv', index=False)
 
-# **Step 3: Get User Search Input**
-search_input = input("Enter search phrase (e.g., 'shah industrial andheri east'): ")
+print("Filtered addresses saved to filtered_addresses.csv")
 
-# **Step 4: Perform NLP-Based Matching**
-matched_df = find_matching_addresses(search_input, df)
-
-# **Step 5: Save Filtered Matches to CSV (Only 50%+ Similarity)**
-if not matched_df.empty:
-    matched_df.to_csv("matched_addresses_nlp.csv", index=False)
-    print(f"Matched addresses (50%+ similarity) saved to 'matched_addresses_nlp.csv'")
-else:
-    print("No matching addresses found with similarity above 50%.")
-
-# **Step 6: Display Top Matches**
-print(matched_df.head(10))  # Show first 10 results
+# Display top 10 matches
+print(result.head(10))
