@@ -26,6 +26,19 @@ def clean_address(address):
 
     return address
 
+# Extract Locality, Road Name, and Station Name
+def extract_location_details(address):
+    """Extract locality, road name, and station name from the address."""
+    locality = re.findall(r'\b([a-zA-Z0-9]+\s?(nagar|colony|layout|scheme|apartment|complex|block|area))\b', address)
+    road = re.findall(r'\b([a-zA-Z0-9]+\s?(road|street|avenue|lane|drive))\b', address)
+    station = re.findall(r'\b([a-zA-Z0-9]+\s?(station))\b', address)
+    
+    return (
+        locality[0][0] if locality else '',
+        road[0][0] if road else '',
+        station[0][0] if station else ''
+    )
+
 # Address Search using TF-IDF Similarity
 def search_addresses(df, query, pincodes):
     """Searches addresses using TF-IDF similarity and filters by pin codes."""
@@ -61,7 +74,14 @@ uploaded_file = st.file_uploader("📂 Upload Excel File", type=['xlsx'])
 if uploaded_file:
     df = load_data(uploaded_file)
     df['Address'] = df['Address'].apply(clean_address)  # Clean addresses before processing
-
+    
+    # Extract location details
+    df[['Locality', 'Road Name', 'Station Name']] = df['Address'].apply(lambda x: pd.Series(extract_location_details(x)))
+    
+    # Save extracted data to CSV
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Download Processed Data", csv, "processed_addresses.csv", "text/csv")
+    
     # User Input
     query = st.text_input("✍️ Enter Keywords (comma-separated):")
     pincode_input = st.text_input("📍 Enter up to 2 Pincodes (comma-separated):")
@@ -75,7 +95,7 @@ if uploaded_file:
             st.success(f"✅ {match_count} related addresses found!")
             st.dataframe(result)
             # Download CSV
-            csv = result.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Results", csv, "filtered_addresses.csv", "text/csv")
+            csv_result = result.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Results", csv_result, "filtered_addresses.csv", "text/csv")
         else:
             st.warning(f"❌ No results found for '{query}' with Pincode(s): {', '.join(pincodes)}.")

@@ -16,9 +16,10 @@ def clean_address(address):
     address = re.sub(r'[^a-zA-Z0-9\s,]', '', address)  # Remove special characters (allow commas)
     address = re.sub(r'\s+', ' ', address)  # Normalize spaces
     common_replacements = {
-        'rd': 'road', 'st': 'street', 'ave': 'avenue', 'blvd': 'boulevard',
-        'svrd': 'sv road', 'mg rd': 'mg road', 'jdbc': 'junction'
+        'rd': 'road', 'st': 'street', 'ave': 'avenue', 
+        'svrd': 'sv road', 'mg rd': 'mg road'
     }
+    
     for key, val in common_replacements.items():
         address = re.sub(fr'\b{key}\b', val, address, flags=re.IGNORECASE)
     return address
