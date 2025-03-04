@@ -27,8 +27,8 @@ def clean_address(address):
     return address
 
 # Address Search using TF-IDF Similarity
-def search_addresses(df, query):
-    """Searches addresses using TF-IDF similarity without threshold tuning."""
+def search_addresses(df, query, pincodes):
+    """Searches addresses using TF-IDF similarity and filters by pin codes."""
     query = query.strip().lower()
     
     # Prepare address corpus
@@ -46,6 +46,10 @@ def search_addresses(df, query):
     sorted_indices = similarity_scores.argsort()[::-1]  # Descending order
     relevant_indices = [idx for idx in sorted_indices if similarity_scores[idx] > 0]  # Keep only relevant matches
 
+    # Filter by Pincode
+    if pincodes:
+        relevant_indices = [idx for idx in relevant_indices if str(df.iloc[idx]['Pincode']) in pincodes]
+
     # Return only relevant addresses (keeping original data format)
     return df.iloc[relevant_indices]
 
@@ -60,9 +64,11 @@ if uploaded_file:
 
     # User Input
     query = st.text_input("✍️ Enter Keywords (comma-separated):")
+    pincode_input = st.text_input("📍 Enter up to 2 Pincodes (comma-separated):")
 
     if st.button("🔎 Search"):
-        result = search_addresses(df, query)
+        pincodes = [p.strip() for p in pincode_input.split(",") if p.strip().isdigit()][:2]  # Allow max 2 pincodes
+        result = search_addresses(df, query, pincodes)
         match_count = len(result)
 
         if match_count > 0:
@@ -72,4 +78,4 @@ if uploaded_file:
             csv = result.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Download Results", csv, "filtered_addresses.csv", "text/csv")
         else:
-            st.warning(f"❌ No results found for '{query}'. Try refining your keywords.")
+            st.warning(f"❌ No results found for '{query}' with Pincode(s): {', '.join(pincodes)}.")
