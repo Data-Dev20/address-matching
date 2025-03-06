@@ -3,8 +3,6 @@ import pandas as pd
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.cluster import DBSCAN
-import numpy as np
 
 # Load dataset
 @st.cache_data
@@ -28,47 +26,50 @@ def clean_address(address):
 
     return address
 
+# Function to categorize addresses into clusters
+def categorize_cluster(address):
+    """Assigns an address to a predefined cluster based on keywords."""
+    clusters = {
+        "Lokhandwala Complex": ["lokhandwala", "lokhandwala complex"],
+        "Juhu Tara Road": ["juhu tara", "juhu tara road"],
+        "Andheri West": ["andheri west", "versova", "dn nagar"],
+        "Bandra": ["bandra", "carter road", "hill road"],
+        "Marine Drive": ["marine drive", "nariman point"],
+    }
+    
+    address = address.lower()
+    for cluster, keywords in clusters.items():
+        if any(keyword in address for keyword in keywords):
+            return cluster
+    
+    return "Other"  # Default category if no match is found
+
 # Address Search using TF-IDF Similarity
-def search_addresses(df, query1, query2, pincodes):
+def search_addresses(df, query, pincodes):
     """Searches addresses using TF-IDF similarity and filters by pin codes."""
-    query1, query2 = query1.strip().lower(), query2.strip().lower()
+    query = query.strip().lower()
     
     # Prepare address corpus
     addresses = df['Address'].tolist()
-    addresses.append(query1)  # Append queries for vectorization
-    addresses.append(query2)
+    addresses.append(query)  # Append query as last item for vectorization
 
     # TF-IDF Vectorization
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(addresses)
 
-    # Compute Cosine Similarity for both queries
-    sim_query1 = cosine_similarity(tfidf_matrix[-2], tfidf_matrix[:-2])[0]
-    sim_query2 = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-2])[0]
+    # Compute Cosine Similarity
+    similarity_scores = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])[0]  # Compare query with all addresses
 
-    # Filter addresses where both queries match with at least 0.3 similarity
-    matched_indices = [idx for idx in range(len(sim_query1)) if sim_query1[idx] > 0.3 and sim_query2[idx] > 0.3]
+    # Sort results by highest similarity
+    sorted_indices = similarity_scores.argsort()[::-1]  # Descending order
+    relevant_indices = [idx for idx in sorted_indices if similarity_scores[idx] > 0]  # Keep only relevant matches
 
     # Filter by Pincode
     if pincodes:
-        matched_indices = [idx for idx in matched_indices if str(df.iloc[idx]['Pincode']) in pincodes]
+        relevant_indices = [idx for idx in relevant_indices if str(df.iloc[idx]['Pincode']) in pincodes]
 
     # Return only relevant addresses (keeping original data format)
-    return df.iloc[matched_indices]
-
-# Clustering Addresses with DBSCAN
-def cluster_addresses(df):
-    """Clusters addresses based on text similarity using DBSCAN."""
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(df['Address'])
-
-    # DBSCAN clustering based on cosine similarity
-    dbscan = DBSCAN(metric="cosine", eps=0.3, min_samples=2)
-    clusters = dbscan.fit_predict(tfidf_matrix.toarray())
-
-    # Assign cluster labels
-    df["Cluster"] = clusters
-    return df
+    return df.iloc[relevant_indices]
 
 # Streamlit UI
 st.title("🔍 Address Filtering & Clustering System")
@@ -78,26 +79,24 @@ uploaded_file = st.file_uploader("📂 Upload Excel File", type=['xlsx'])
 if uploaded_file:
     df = load_data(uploaded_file)
     df['Address'] = df['Address'].apply(clean_address)  # Clean addresses before processing
+    df['Cluster'] = df['Address'].apply(categorize_cluster)  # Assign clusters
 
     # User Input
-    query1 = st.text_input("✍️ Enter First Keyword:")
-    query2 = st.text_input("✍️ Enter Second Keyword:")
+    query = st.text_input("✍️ Enter Keywords (comma-separated):")
     pincode_input = st.text_input("📍 Enter up to 2 Pincodes (comma-separated):")
 
-    if st.button("🔎 Search & Cluster"):
+    if st.button("🔎 Search"):
         pincodes = [p.strip() for p in pincode_input.split(",") if p.strip().isdigit()][:2]  # Allow max 2 pincodes
-        result = search_addresses(df, query1, query2, pincodes)
-        
-        if not result.empty:
-            # Apply clustering
-            clustered_result = cluster_addresses(result)
-            match_count = len(clustered_result)
-            
-            st.success(f"✅ {match_count} related addresses found and clustered!")
-            st.dataframe(clustered_result)
+        result = search_addresses(df, query, pincodes)
+        match_count = len(result)
+
+        if match_count > 0:
+            result['Cluster'] = result['Address'].apply(categorize_cluster)  # Ensure clusters in search results
+            st.success(f"✅ {match_count} related addresses found!")
+            st.dataframe(result)
 
             # Download CSV
-            csv = clustered_result.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Clustered Data", csv, "clustered_addresses.csv", "text/csv")
+            csv = result.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Results", csv, "filtered_addresses.csv", "text/csv")
         else:
-            st.warning(f"❌ No results found for '{query1}' & '{query2}' with Pincode(s): {', '.join(pincodes)}.")
+            st.warning(f"❌ No results found for '{query}' with Pincode(s): {', '.join(pincodes)}.")

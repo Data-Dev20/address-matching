@@ -1,7 +1,0 @@
-streamlit
-flask
-pandas
-mysql-connector-python
-scikit-learn
-requests
-openpyxl
