@@ -9,7 +9,7 @@ import streamlit as st
 import base64
 
 # Page Configuration
-st.set_page_config(page_title="Address Processing System", page_icon="D:/data for address/add/namalogo.webp", layout="wide")
+st.set_page_config(page_title="Address Processing System", page_icon="add/namalogo.webp", layout="wide")
 
 # Function to convert image to Base64
 def get_base64_image(image_path):
@@ -17,7 +17,7 @@ def get_base64_image(image_path):
         return base64.b64encode(img_file.read()).decode()
 
 # Convert the logo to Base64
-logo_base64 = get_base64_image("D:/data for address/add/namalogo.webp")
+logo_base64 = get_base64_image("add/namalogo.webp")
 
 # Custom HTML & CSS for inline logo + title
 st.markdown(
@@ -29,6 +29,8 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
 
 
 # Function to clean text
