@@ -1,0 +1,7 @@
+fuzzywuzzy
+python-Levenshtein
+pandas
+openpyxl
+scikit-learn
+streamlit
+rapidfuzz
