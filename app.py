@@ -5,6 +5,10 @@ from fuzzywuzzy import fuzz
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Page Configuration
+st.set_page_config(page_title="Address Clustering System", page_icon="📍", layout="wide")
+
+
 # Function to clean text
 def clean_text(text):
     text = str(text).lower().strip()
@@ -81,12 +85,22 @@ def match_cluster(address, pincode, cluster_dict, vectorizer, tfidf_matrix, clus
 
 # Streamlit UI
 st.title("📍 Address Clustering System")
+st.markdown("Upload your files to process addresses and match them to clusters.")
 
 # File Uploads
-cluster_file = st.file_uploader("📂 Upload Cluster File (Excel)", type=['xlsx'])
-address_file = st.file_uploader("📂 Upload Address File (Excel)", type=['xlsx'])
+col1, col2 = st.columns(2)
+with col1:
+    cluster_file = st.file_uploader("📂 Upload Cluster File (Excel)", type=['xlsx'])
+with col2:
+    address_file = st.file_uploader("📂 Upload Address File (Excel)", type=['xlsx'])
 
+  # Horizontal line for better UI separation
+
+# Processing files
 if cluster_file and address_file:
+    status = st.empty()  # Create a placeholder for status messages
+    status.info("⏳ Processing data... Please wait.")
+
     cluster_dict = load_clusters(cluster_file)
     df_new = load_data(address_file)
 
@@ -101,9 +115,21 @@ if cluster_file and address_file:
     df_new["Cluster"] = df_new.apply(lambda row: match_cluster(str(row["Address"]), str(row["Pincode"]), 
                                                                 cluster_dict, vectorizer, tfidf_matrix, cluster_names), axis=1)
 
-    st.success("✅ Address clustering completed!")
+    status.empty()  # Clear the "Processing..." message
+    st.success("✅ Address clustering completed!")  # Show success message
     st.dataframe(df_new)
 
     # Download processed file
     output_file = df_new.to_csv(index=False).encode("utf-8")
     st.download_button("📥 Download Clustered Data", output_file, "clustered_addresses.csv", "text/csv")
+
+# Footer Section
+st.markdown("---")
+st.markdown(
+    """
+    <div style='text-align: center; padding: 10px; font-size: 14px;'>
+        Created by <b>Siddhi Patade</b> | © 2025 Address Clustering System
+    </div>
+    """,
+    unsafe_allow_html=True
+)
