@@ -11,26 +11,16 @@ import base64
 # Page Configuration
 st.set_page_config(page_title="Address Processing System", page_icon="add/namalogo.webp", layout="wide")
 
-# Function to convert image to Base64
-def get_base64_image(image_path):
-    with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode()
+# Display logo and title in the same line
+col1, col2 = st.columns([0.09, 0.9])
+with col1:
+    st.image("add/namalogo.webp", width=80)  # Use a relative path
 
-# Convert the logo to Base64
-logo_base64 = get_base64_image("add/namalogo.webp")
-
-# Custom HTML & CSS for inline logo + title
-st.markdown(
-    f"""
-    <div style="display: flex; align-items: center;">
-        <img src="data:image/webp;base64,{logo_base64}" width="80" style="margin-right: 15px;">
-        <h1 style="font-size: 36px; color: #0047AB; margin: 0;">Namaskar Distribution Solutions Pvt Ltd</h1>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
+with col2:
+    st.markdown(
+        "<h1 style='font-size: 36px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>", 
+        unsafe_allow_html=True
+    )
 
 
 # Function to clean text
