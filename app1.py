@@ -4,6 +4,7 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+st.set_page_config(page_title="Address Clustering System", page_icon="📍", layout="wide")
 # Load dataset
 @st.cache_data
 def load_data(file_path):
@@ -79,3 +80,14 @@ if uploaded_file:
             st.download_button("📥 Download Results", csv, "filtered_addresses.csv", "text/csv")
         else:
             st.warning(f"❌ No results found for '{query}' with Pincode(s): {', '.join(pincodes)}.")
+
+# Footer Section
+st.markdown("---")
+st.markdown(
+    """
+    <div style='text-align: center; padding: 10px; font-size: 14px;'>
+        Created by <b>Siddhi Patade</b> | © 2025 Address Clustering System
+    </div>
+    """,
+    unsafe_allow_html=True
+)
