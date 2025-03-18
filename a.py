@@ -8,6 +8,17 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Page Configuration
 st.set_page_config(page_title="Address Processing System", page_icon="📍", layout="wide")
 
+# Display logo and title
+col1, col2 = st.columns([0.09, 0.9])
+with col1:
+    st.image("add/namalogo.webp", width=80)
+
+with col2:
+    st.markdown(
+        "<h1 style='font-size: 36px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>", 
+        unsafe_allow_html=True
+    )
+
 # Function to clean text
 def clean_text(text):
     text = str(text).lower().strip()
@@ -17,26 +28,55 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text)  # Normalize spaces
     return text
 
-# Function to load data
+# Function to load and standardize data
 @st.cache_data
-def load_data(file_path):
-    return pd.read_excel(file_path)
+def load_data(uploaded_file):
+    file_extension = uploaded_file.name.split(".")[-1].lower()
+
+    if file_extension == "csv":
+        df = pd.read_csv(uploaded_file, encoding="ISO-8859-1")
+    elif file_extension in ["xls", "xlsx"]:
+        df = pd.read_excel(uploaded_file, engine="openpyxl")
+    else:
+        st.error("❌ Unsupported file format. Please upload CSV or Excel files only.")
+        return None
+
+    # Normalize column names
+    df.columns = df.columns.str.strip().str.lower()
+
+    # Standardize column names
+    column_mapping = {
+        "address": "Address",
+        "pincode": "Pincode",
+        "pin code": "Pincode",
+        "postal code": "Pincode"
+    }
+    df.rename(columns=column_mapping, inplace=True)
+
+    # Check if required columns exist
+    if "Address" not in df.columns or "Pincode" not in df.columns:
+        st.error("❌ Required columns ('Address', 'Pincode') not found.")
+        return None
+
+    return df
 
 # Load reference clusters
 def load_clusters(file):
-    xls = pd.ExcelFile(file)
-    df_ref = pd.read_excel(xls, sheet_name="Sheet1")
-    
+    df_ref = load_data(file)
+    if df_ref is None:
+        return None
+
     cluster_dict = {}
     for _, row in df_ref.iterrows():
         keyword = str(row["Keyword"]).strip()
-        pincode = str(row["pincode"]).strip()
-        
+        pincode = str(row["Pincode"]).strip()
+
         if ":" in keyword and "[" in keyword:
             cluster_name = keyword.split(":")[0].strip()
             sub_areas = keyword.split("[")[-1].replace("]", "").replace(";", ",").split(",")
             sub_areas = [clean_text(area) for area in sub_areas]
             cluster_dict[cluster_name] = {"areas": sub_areas, "pincode": pincode}
+
     return cluster_dict
 
 # Match Address to Cluster
@@ -77,86 +117,66 @@ def match_cluster(address, pincode, cluster_dict, vectorizer, tfidf_matrix, clus
     else:
         return "Unmatched"
 
-# Address Search using TF-IDF Similarity
-def search_addresses(df, query, pincodes):
-    query = query.strip().lower()
-    addresses = df['Address'].tolist()
-    addresses.append(query)
-    
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(addresses)
-    
-    similarity_scores = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])[0]
-    sorted_indices = similarity_scores.argsort()[::-1]
-    relevant_indices = [idx for idx in sorted_indices if similarity_scores[idx] > 0]
-    
-    if pincodes:
-        relevant_indices = [idx for idx in relevant_indices if str(df.iloc[idx]['Pincode']) in pincodes]
-    
-    return df.iloc[relevant_indices]
-
 # Streamlit UI
-st.title("Address Processing System")
-tabs = st.tabs(["🔎 Address Filtering", "📌 Address Clustering"])
-
-# Address Filtering Tab
-with tabs[0]:
-    st.subheader("🔎 Address Filtering System")
-    uploaded_file = st.file_uploader("📂 Upload Excel File", type=['xlsx'], key='filter')
-    if uploaded_file:
-        df = load_data(uploaded_file)
-        df['Address'] = df['Address'].apply(clean_text)
-        query = st.text_input("✍️ Enter Keywords:")
-        pincode_input = st.text_input("📍 Enter up to 2 Pincodes (comma-separated):")
-        
-        if st.button("🔎 Search", key='search'):
-            pincodes = [p.strip() for p in pincode_input.split(",") if p.strip().isdigit()][:2]
-
-            result = search_addresses(df, query, pincodes)
-            if not result.empty:
-                st.success(f"✅ {len(result)} related addresses found!")
-                st.dataframe(result)
-                csv = result.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download Results", csv, f"{query}_cluster_addresses.csv", "text/csv")
-            else:
-                st.warning("❌ No matching addresses found.")
+st.title("📍 Address Processing System")
+tabs = st.tabs(["📄 Address Cluster", "🔎 Search in Clustered Data", "📑 Address Filtering"])
 
 # Address Clustering Tab
-with tabs[1]:
-    st.subheader("📌 Address Clustering System")
+with tabs[0]:
+    st.subheader("📄 Address Cluster")
     col1, col2 = st.columns(2)
     with col1:
-        cluster_file = st.file_uploader("📂 Upload Cluster File", type=['xlsx'], key='cluster')
+        cluster_file = st.file_uploader("📂 Upload Cluster File", type=['xlsx', 'csv'], key='cluster')
     with col2:
-        address_file = st.file_uploader("📂 Upload Address File", type=['xlsx'], key='address')
-    
+        address_file = st.file_uploader("📂 Upload Address File", type=['xlsx', 'csv'], key='address')
+
     if cluster_file and address_file:
         status = st.empty()
         status.info("⏳ Processing data... Please wait.")
+
         cluster_dict = load_clusters(cluster_file)
         df_new = load_data(address_file)
-        corpus = [" ".join(data["areas"]) for data in cluster_dict.values()]
-        cluster_names = list(cluster_dict.keys())
-        vectorizer = TfidfVectorizer()
-        tfidf_matrix = vectorizer.fit_transform(corpus)
-        
-        df_new["Cluster"] = df_new.apply(lambda row: match_cluster(str(row["Address"]), str(row["Pincode"]),
-                                                                    cluster_dict, vectorizer, tfidf_matrix, cluster_names), axis=1)
-        status.empty()
-        st.success("✅ Address clustering completed!")
-        st.dataframe(df_new)
-        output_file = df_new.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Download Clustered Data", output_file, "clustered_addresses.csv", "text/csv")
+
+        if cluster_dict and df_new is not None:
+            corpus = [" ".join(data["areas"]) for data in cluster_dict.values()]
+            cluster_names = list(cluster_dict.keys())
+            vectorizer = TfidfVectorizer()
+            tfidf_matrix = vectorizer.fit_transform(corpus)
+
+            df_new["Cluster"] = df_new.apply(lambda row: match_cluster(str(row["Address"]), str(row["Pincode"]),
+                                                                       cluster_dict, vectorizer, tfidf_matrix, cluster_names), axis=1)
+            status.empty()
+            st.success("✅ Address clustering completed!")
+            st.dataframe(df_new)
+
+            output_file = df_new.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Download Clustered Data", output_file, "clustered_addresses.csv", "text/csv")
+
+# Search in Clustered Data Tab
+with tabs[1]:
+    st.subheader("🔎 Search in Clustered Data")
+    uploaded_clustered_file = st.file_uploader("📂 Upload Clustered File", type=['csv', 'xlsx'], key='clustered_search')
+
+    if uploaded_clustered_file:
+        df_clustered = load_data(uploaded_clustered_file)
+        if df_clustered is not None:
+            query = st.text_input("✍️ Enter Cluster Name(s):")
+            if st.button("🔎 Search"):
+                df_result = df_clustered[df_clustered['Cluster'].str.contains(query, case=False, na=False)]
+                if not df_result.empty:
+                    st.success(f"✅ {len(df_result)} addresses found!")
+                    st.dataframe(df_result)
+                    csv = df_result.to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 Download Results", csv, "search_results.csv", "text/csv")
+                else:
+                    st.warning("❌ No matching addresses found.")
 
 # Footer Section
 st.markdown("---")
-
 st.markdown(
-    """
-    <div style='text-align: center; padding: 10px; font-size: 14px;'>
-        <b>Namaskar Distribution Solutions PVT LTD</b> <br>
-        Created by <b>Siddhi Patade</b> | © 2025 Address Clustering System
-    </div>
-    """,
+    "<div style='text-align: center; font-size: 14px;'>"
+    "<b>Namaskar Distribution Solutions Pvt Ltd</b><br>"
+    "Created by <b>Siddhi Patade</b> | © 2025 Address Clustering System"
+    "</div>",
     unsafe_allow_html=True
 )
