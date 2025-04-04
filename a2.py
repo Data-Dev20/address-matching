@@ -14,11 +14,11 @@ st.set_page_config(page_title="Address Processing System", page_icon="namalogo.w
 # Display logo and title in the same line
 col1, col2 = st.columns([0.09, 0.9])
 with col1:
-    st.image("namalogo.webp", width=80)  # Use a relative path
+    st.image("namalogo.webp", width=70)  # Use a relative path
 
 with col2:
     st.markdown(
-        "<h1 style='font-size: 36px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>", 
+        "<h1 style='font-size: 32px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>", 
         unsafe_allow_html=True
     )
 
@@ -101,7 +101,7 @@ def match_cluster(address, pincode, cluster_dict, vectorizer, tfidf_matrix, clus
         return "Unmatched"
 
 # Streamlit UI
-st.title("Address Processing System")
+st.title(" Address Processing System")
 tabs = st.tabs([" Address Cluster", " Search in Clustered Data", " Address Filtering"])
 
 # Address Clustering Tab
