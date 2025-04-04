@@ -9,12 +9,12 @@ import streamlit as st
 import base64
 
 # Page Configuration
-st.set_page_config(page_title="Address Processing System", page_icon="add/namalogo.webp", layout="wide")
+st.set_page_config(page_title="Address Processing System", page_icon="namalogo.webp", layout="wide")
 
 # Display logo and title in the same line
 col1, col2 = st.columns([0.09, 0.9])
 with col1:
-    st.image("add/namalogo.webp", width=80)  # Use a relative path
+    st.image("namalogo.webp", width=80)  # Use a relative path
 
 with col2:
     st.markdown(
