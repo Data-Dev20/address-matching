@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from io import BytesIO
 
+st.set_page_config(page_title="Agent Assign", page_icon="namalogo.webp", layout="wide")
 def categorize_branch(branch):
     if branch in ['Trackon West', 'POST', 'DTDC']:
         return 'CD'
@@ -131,7 +132,7 @@ if uploaded_deliveries and uploaded_agents:
 
     if "pincode" in deliveries_df.columns:
         st.success("✅ Deliveries Assigned Successfully!")
-        st.dataframe(assigned_df.head(10))
+        st.dataframe(assigned_df)
 
         excel_data = convert_df_to_excel(assigned_df)
         

@@ -125,7 +125,8 @@ if uploaded_deliveries and uploaded_agents:
 
     if "pincode" in deliveries_df.columns:
         st.success("✅ Deliveries Assigned Successfully!")
-        st.dataframe(assigned_df.head(10))
+        st.dataframe(assigned_df)
+        
 
         excel_data = convert_df_to_excel(assigned_df)
 

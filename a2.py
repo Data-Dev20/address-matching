@@ -6,7 +6,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from io import BytesIO
 from datetime import datetime, timedelta
-
 import streamlit as st
 import base64
 
@@ -134,8 +133,12 @@ with tabs[0]:
             st.success("✅ Address clustering completed!")
             st.dataframe(df_new)
             
+
             output_file = df_new.to_csv(index=False).encode("utf-8")
             st.download_button("📥 Download Clustered Data", output_file, "clustered_addresses.csv", "text/csv")
+
+            
+
 
 # Search in Clustered Data Tab
 with tabs[1]:
