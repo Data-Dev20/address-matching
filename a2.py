@@ -110,9 +110,11 @@ with tabs[0]:
     st.subheader("📄 Address Cluster")
     col1, col2 = st.columns(2)
     with col1:
-        cluster_file = st.file_uploader("📂 Upload Cluster File", type=['xlsx', 'csv'], key='cluster')
+        st.subheader("Cluster File (Excel)")
+        cluster_file = st.file_uploader("📂 Upload here", type=['xlsx', 'csv'], key='cluster')
     with col2:
-        address_file = st.file_uploader("📂 Upload Address File", type=['xlsx', 'csv'], key='address')
+        st.subheader("Address File (Excel)")
+        address_file = st.file_uploader("📂 Upload here", type=['xlsx', 'csv'], key='address')
     
     if cluster_file and address_file:
         status = st.empty()

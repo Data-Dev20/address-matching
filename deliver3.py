@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 from io import BytesIO
+import base64
+import re
+from datetime import date, timedelta
 
 st.set_page_config(page_title="Agent Assign", page_icon="namalogo.webp", layout="wide")
 #remark for the data if cd then courier deliver else self deliver
@@ -27,8 +30,12 @@ def categorize_vehicle(weight):
 
 def assign_deliveries(deliveries_df, agents_df):
     # Debug: Print column names
-    st.write("📌 Deliveries Columns:", deliveries_df.columns.tolist())
-    st.write("📌 Agents Columns:", agents_df.columns.tolist())
+    st.subheader("Deliveries Columns")
+    st.table(deliveries_df.columns.values.reshape(1, -1))
+    
+    st.subheader("Agents Columns")
+    st.table(agents_df.columns.values.reshape(1, -1))
+   
 
     # Standardize column names
     deliveries_df.rename(columns={"Pincode": "pincode",
@@ -64,6 +71,8 @@ def assign_deliveries(deliveries_df, agents_df):
     start_date = datetime(2025, 4, 8)
     date_range = [start_date + timedelta(days=i) for i in range(8)]
     date_columns = [date.strftime("%d-%m-%Y") for date in date_range]
+
+    
 
     # Add empty date columns
     for date_col in date_columns:
@@ -121,18 +130,28 @@ def convert_df_to_excel(df):
     return output.getvalue()
 
 # Streamlit UI
-st.title("📦 Delivery Assignment System")
+st.title("📦 Delivery Assign")
 
-uploaded_deliveries = st.file_uploader("Upload Deliveries File (Excel)", type=["xlsx"])
-uploaded_agents = st.file_uploader("Upload Agents File (Excel)", type=["xlsx"])
+col1, col2 = st.columns(2)
+with col1:
+    st.subheader("Deliveries File (Excel)")
+    uploaded_deliveries = st.file_uploader("Upload here ", type=["xlsx"])
+with col2:
+    st.subheader("Agents File (Excel)")
+    uploaded_agents = st.file_uploader("Upload here", type=["xlsx"])
+
 
 if uploaded_deliveries and uploaded_agents:
+    status = st.empty()
+    status.info("⏳ Processing data... Please wait.")
     deliveries_df = pd.read_excel(uploaded_deliveries)
     agents_df = pd.read_excel(uploaded_agents)
+    
     
     assigned_df = assign_deliveries(deliveries_df, agents_df)
 
     if "pincode" in deliveries_df.columns:
+        status.empty()
         st.success("✅ Deliveries Assigned Successfully!")
         st.dataframe(assigned_df)
 
@@ -142,3 +161,53 @@ if uploaded_deliveries and uploaded_agents:
                            data=excel_data, 
                            file_name="assigned_deliveries.xlsx", 
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+    # Assume assigned_df is already defined and processed
+    # And date_columns contains the list of delivery date columns
+    # And date_range contains the corresponding datetime.date objects
+
+    # 1. Total AWBs Assigned
+    total_assigned = assigned_df[assigned_df[date_columns].apply(lambda row: any(row != ""), axis=1)].shape[0]
+    st.info(f"📦 Total Deliveries Assigned: **{total_assigned}**")
+
+    # 2. Total Records in Output File (Data Size, Not File Size)
+    total_rows = assigned_df.shape[0]
+    st.info(f"📊 Total Records in File: **{total_rows} rows**")
+
+    # 3. Per-Day Delivery Assignment Summary
+    daily_counts = {
+        date.strftime("%d-%m-%Y"): (assigned_df[date.strftime("%d-%m-%Y")] != "").sum()
+        for date in date_range
+    }
+    daily_summary_df = pd.DataFrame(list(daily_counts.items()), columns=["Date", "Deliveries Assigned"])
+    st.subheader("📅 Per-Day Delivery Summary")
+    st.dataframe(daily_summary_df)
+
+    # 4. Per-Agent Delivery Count (Across All Days)
+    agent_counts = {}
+    for date_col in date_columns:
+        day_counts = assigned_df[date_col].value_counts().to_dict()
+        for agent, count in day_counts.items():
+            if agent != "":
+                agent_counts[agent] = agent_counts.get(agent, 0) + count
+
+    agent_summary_df = pd.DataFrame(list(agent_counts.items()), columns=["Agent", "Total Deliveries Assigned"])
+    agent_summary_df = agent_summary_df.sort_values("Total Deliveries Assigned", ascending=False)
+    st.subheader("👤 Agent-wise Delivery Summary")
+    st.dataframe(agent_summary_df)
+
+
+
+# Footer Section
+st.markdown("---")
+
+st.markdown(
+    """
+    <div style='text-align: center; padding: 10px; font-size: 14px;'>
+        <b>Namaskar Distribution Solutions Pvt Ltd</b> <br>
+        Created by <b>Siddhi Patade</b> | © 2025 Agent Assign
+    </div>
+    """,
+    unsafe_allow_html=True
+)
