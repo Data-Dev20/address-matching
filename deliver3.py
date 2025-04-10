@@ -4,12 +4,14 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 st.set_page_config(page_title="Agent Assign", page_icon="namalogo.webp", layout="wide")
+#remark for the data if cd then courier deliver else self deliver
 def categorize_branch(branch):
     if branch in ['Trackon West', 'POST', 'DTDC']:
         return 'CD'
     else:
         return 'SD'
 
+#vehicle colm 
 def categorize_vehicle(weight):
     """
     Function to categorize weights into ST (Self) or OT (Other)
