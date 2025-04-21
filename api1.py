@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -6,6 +7,7 @@ from io import BytesIO
 from geopy.geocoders import Nominatim
 import time
 from sklearn.cluster import KMeans
+import pydeck as pdk
 
 # --------------------------------------
 # Helper Functions
@@ -25,26 +27,25 @@ def categorize_vehicle(weight):
     return "ST" if weight_str in ST_WEIGHTS else "OT"
 
 def get_lat_lon(address):
-    geolocator = Nominatim(user_agent="delivery_app")
-    try:
-        location = geolocator.geocode(address)
-        if location:
-            return pd.Series([location.latitude, location.longitude])
-    except Exception as e:
-        print(f"Error for address {address}: {e}")
+    geolocator = Nominatim(user_agent="delivery_app", timeout=10)
+    for _ in range(3):  # Retry 3 times
+        try:
+            location = geolocator.geocode(address)
+            if location:
+                return pd.Series([location.latitude, location.longitude])
+            break
+        except Exception as e:
+            print(f"Retrying for address {address} due to error: {e}")
+            time.sleep(1)  # Respect rate limits
     return pd.Series([None, None])
 
 def cluster_addresses(df, n_clusters=10):
     coords = df[['latitude', 'longitude']].dropna()
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    if coords.empty:
+        return df  # No coordinates to cluster
+    kmeans = KMeans(n_clusters=min(n_clusters, len(coords)), random_state=42)
     df.loc[coords.index, 'cluster'] = kmeans.fit_predict(coords)
     return df
-
-def get_route(coords_list):
-    coords_str = ";".join([f"{lon},{lat}" for lat, lon in coords_list])
-    url = f"http://router.project-osrm.org/route/v1/driving/{coords_str}?overview=full&geometries=geojson"
-    response = requests.get(url)
-    return response.json()
 
 def assign_deliveries(deliveries_df, agents_df):
     st.write("📌 Deliveries Columns:", deliveries_df.columns.tolist())
@@ -56,12 +57,10 @@ def assign_deliveries(deliveries_df, agents_df):
     deliveries_df["remark"] = deliveries_df["branch"].apply(categorize_branch)
     deliveries_df["vehicle"] = deliveries_df["weight"].apply(categorize_vehicle)
 
-    # Geocode addresses
     st.info("🔄 Geocoding addresses...")
     deliveries_df[['latitude', 'longitude']] = deliveries_df['Address'].apply(get_lat_lon)
     time.sleep(1)
 
-    # Cluster addresses
     st.info("🔄 Clustering addresses by proximity...")
     deliveries_df = cluster_addresses(deliveries_df, n_clusters=10)
 
@@ -148,4 +147,23 @@ if uploaded_deliveries and uploaded_agents:
         excel_data = convert_df_to_excel(assigned_df)
         st.download_button("📅 Download Assigned Deliveries", data=excel_data, file_name="assigned_deliveries.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-        st.map(assigned_df[['latitude', 'longitude']].dropna())
+        if 'cluster' in assigned_df.columns:
+            st.subheader("📍 Clustered Delivery Locations Map")
+            st.pydeck_chart(pdk.Deck(
+                map_style="mapbox://styles/mapbox/streets-v12",
+                initial_view_state=pdk.ViewState(
+                    latitude=assigned_df['latitude'].mean(),
+                    longitude=assigned_df['longitude'].mean(),
+                    zoom=10,
+                    pitch=0,
+                ),
+                layers=[
+                    pdk.Layer(
+                        'ScatterplotLayer',
+                        data=assigned_df.dropna(subset=["latitude", "longitude"]),
+                        get_position='[longitude, latitude]',
+                        get_color='[cluster * 20, 100, 150, 160]',
+                        get_radius=100,
+                    ),
+                ],
+            ))
