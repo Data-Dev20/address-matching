@@ -7,8 +7,19 @@ from sklearn.cluster import KMeans
 import plotly.express as px
 from io import BytesIO
 
-# Set page configuration
-st.set_page_config(page_title="Courier Clustering & Assignment", layout="wide")
+# Page Configuration
+st.set_page_config(page_title="Address Assignment System", page_icon="namalogo.webp", layout="wide")
+
+# Display logo and title in the same line
+col1, col2 = st.columns([0.09, 0.9])
+with col1:
+    st.image("namalogo.webp", width=70)  # Use a relative path
+
+with col2:
+    st.markdown(
+        "<h1 style='font-size: 36px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>", 
+        unsafe_allow_html=True
+    )
 
 # Your Geoapify API Key
 GEOAPIFY_API_KEY = "1dce308a2d0d41c4a4ed07709b5a0552"
@@ -272,6 +283,17 @@ if uploaded_file:
     if st.button("🔄 Refresh App"):
         st.experimental_rerun()
 
-# Footer
+
+
+# Footer Section
 st.markdown("---")
-st.markdown("<center>Created by Namaskar Distribution Solutions Pvt Ltd | 2025</center>", unsafe_allow_html=True)
+
+st.markdown(
+    """
+    <div style='text-align: center; padding: 10px; font-size: 14px;'>
+        <b>Namaskar Distribution Solutions Pvt Ltd</b> <br>
+        Created by <b>Siddhi Patade</b> | © 2025 Address Assignment System
+    </div>
+    """,
+    unsafe_allow_html=True
+)
