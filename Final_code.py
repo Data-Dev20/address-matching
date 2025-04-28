@@ -17,7 +17,7 @@ with col1:
 
 with col2:
     st.markdown(
-        "<h1 style='font-size: 36px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>", 
+        "<h1 style='font-size: 32px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>", 
         unsafe_allow_html=True
     )
 
