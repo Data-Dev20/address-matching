@@ -15,7 +15,7 @@ st.set_page_config(page_title="Address Assignment System", page_icon="namalogo.w
 # Header
 col1, col2 = st.columns([0.09, 0.9])
 with col1:
-    st.image("namalogo.webp", width=70)
+    st.image("logo-3.png", width=70)
 with col2:
     st.markdown("""
         <h1 style='font-size: 32px; color: #0047AB;'>Namaskar Distribution Solutions Pvt Ltd</h1>
