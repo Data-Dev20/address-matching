@@ -46,7 +46,7 @@ def geocode_address(full_address):
         res = requests.get(url).json()
         feature = res['features'][0]
         coords = feature['geometry']['coordinates']
-        area = feature['properties'].get('suburb', feature['properties'].get('city', 'Unknown'))
+        area = feature['properties'].get('suburb', feature['properties'].get('Area_name', 'Unknown'))
         return coords[1], coords[0], area
     except:
         return None, None, 'Unknown'
@@ -104,13 +104,13 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith("xlsx") else pd.read_csv(uploaded_file)
 
         df['Address'] = df['Address'].astype(str).apply(preprocess_address)
-        df['City'] = df['City'].astype(str).str.lower()
+        df['Area_name'] = df['Area_name'].astype(str).str.lower()
         df['Pincode'] = df['Pincode'].astype(str)
         df['Weight'] = pd.to_numeric(df.get('Weight', df['Roll Qty'] * 45 / 1000), errors='coerce').fillna(0)
 
         latitudes, longitudes, areas = [], [], []
         for _, row in df.iterrows():
-            full_address = f"{row['Address']}, {row['City']}, {row['Pincode']}, India"
+            full_address = f"{row['Address']}, {row['Area_name']}, {row['Pincode']}, India"
             lat, lon, area = geocode_address(full_address)
             latitudes.append(lat)
             longitudes.append(lon)
@@ -125,7 +125,7 @@ if uploaded_file:
         cluster_count = max(1, int(len(df) / (radius_km * 10)))
         kmeans = KMeans(n_clusters=cluster_count, random_state=42, n_init=10)
         df['Cluster'] = kmeans.fit_predict(df[['Latitude', 'Longitude']])
-        df['Cluster Name'] = df['Area'].fillna(df['City']) + ' Area'
+        df['Cluster Name'] = df['Area'].fillna(df['Area_name']) + ' Area'
 
         final_df = assign_agents(df, agent_count)
 
