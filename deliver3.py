@@ -79,7 +79,7 @@ def assign_deliveries(deliveries_df, agents_df):
         deliveries_df[date_col] = ""
 
     # Daily limits
-    DAILY_ASSIGNMENT = 60
+    DAILY_ASSIGNMENT = 70
     TOTAL_DAILY_LIMIT = 18 * DAILY_ASSIGNMENT
 
     # Track workload
