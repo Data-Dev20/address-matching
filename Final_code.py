@@ -27,27 +27,13 @@ GEOAPIFY_API_KEY = "1dce308a2d0d41c4a4ed07709b5a0552"
 # Preprocessing function to clean and expand address shortcuts
 def preprocess_address(address):
     mapping = {
-        ' rd ': ' road ',
-        'no': 'number',
-        ' marg ': ' road ',
-        ' ngr ': ' nagar ',
-        ' nr ': ' near ',
-        ' opp ': ' opposite ',
-        ' bldg ': ' building ',
-        ' soc ': ' society ',
-        ' apt ': ' apartment ',
-        'mkt' : 'market', 
-        'ch' : 'church', 
-        'stn' : 'station', 
-        'sv' : 'swami vivekananda', 
-        'mg' : 'mahatma gandhi', 
-        'govt' : 'government', 
-        'talkies' : 'cinema', 
-        'flr' : 'floor', 
-        'sec' : 'sector', 
-        'road' : 'marg', 
-        'village' : 'nagar', 
-        'sec' : 'sector',   
+        ' rd ': ' road ', 'no': 'number', ' marg ': ' road ',
+        ' ngr ': ' nagar ', ' nr ': ' near ', ' opp ': ' opposite ', 
+        ' soc ': ' society ', ' apt ': ' apartment ', 'mkt' : 'market', 
+        'ch' : 'church', ' bldg ': ' building ', 'mg' : 'mahatma gandhi', 
+        'stn' : 'station', 'sv' : 'swami vivekananda', 'mg' : 'mahatma gandhi', 
+        'govt' : 'government', 'talkies' : 'cinema', 'flr' : 'floor', 
+        'sec' : 'sector', 'road' : 'marg', 'village' : 'nagar', 'lane' : 'road',  
     }
     address = str(address).lower()
     address = ' ' + address + ' '

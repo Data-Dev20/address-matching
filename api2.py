@@ -121,7 +121,7 @@ if uploaded_file:
         df['Pincode'] = df['Pincode'].astype(str)
 
         if 'Weight' not in df.columns:
-            df['Weight'] = df['Roll Qty'] * 46 / 1000
+            df['Weight'] = df['Roll Qty'] * 45 / 1000
 
         latitudes, longitudes, areas, cities = [], [], [], []
         for _, row in df.iterrows():

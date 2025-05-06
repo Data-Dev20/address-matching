@@ -24,7 +24,7 @@ with col2:
 # ------------------ SETTINGS ------------------
 GEOAPIFY_API_KEY = "1dce308a2d0d41c4a4ed07709b5a0552"
 ST_WEIGHT_LIMIT_KG = 3.0
-DEFAULT_ROLL_WEIGHT = 46  # in grams
+DEFAULT_ROLL_WEIGHT = 45  # in grams
 
 # ------------------ UTILITY FUNCTIONS ------------------
 def preprocess_address(address):
