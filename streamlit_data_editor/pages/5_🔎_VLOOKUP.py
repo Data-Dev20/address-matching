@@ -29,3 +29,13 @@ if "merged_df" in st.session_state:
             st.error(f"⚠️ Could not perform VLOOKUP: {e}")
 else:
     st.warning("Please upload and merge files first.")
+
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    if st.button("Save Changes"):
+        st.success("Changes saved!")
+
+with col2:
+    if st.button("Continue"):
+        st.info("Continuing to next step...")

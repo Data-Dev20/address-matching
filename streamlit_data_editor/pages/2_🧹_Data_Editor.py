@@ -59,6 +59,17 @@ if "merged_df" in st.session_state:
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             edited_df.to_excel(writer, index=False)
         st.download_button("Download Excel", data=output.getvalue(), file_name=f"{filename}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        else:
+        st.warning("Please upload and merge files first.")
+    
+col1, col2 = st.columns([1, 1])
 
-else:
-    st.warning("Please upload and merge files first.")
+with col1:
+    if st.button("Save Changes"):
+        
+        st.success("Changes saved!")
+
+with col2:
+    if st.button("Continue"):
+        st.session_state["merged_df"] = edited_df
+        st.info("Continuing to next step...")
