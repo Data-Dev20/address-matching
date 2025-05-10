@@ -2,89 +2,108 @@ import streamlit as st
 import pandas as pd
 import requests
 import folium
+from io import BytesIO
 from streamlit_folium import folium_static
 
 # === CONFIG ===
-GEOAPIFY_API_KEY = "6237e6cc370342cb96d6ae8b44539025"  # Replace with your Geoapify key
+GEOAPIFY_API_KEY = "6237e6cc370342cb96d6ae8b44539025"
 
-st.title("📍 MID-Based Route Planner using Geoapify")
-st.markdown("Upload a file with `MID`, `Address`, and `Pincode` to geocode and plan delivery routes.")
+st.set_page_config(page_title="MID Route Planner", layout="wide")
+st.title("📍 MID-Based Route Planner")
+st.markdown("Upload an Excel file with `MID`, `Address`, and `Pincode` to plan delivery routes using Geoapify.")
 
-# === UPLOAD FILE ===
-uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
+# === Upload File ===
+uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "csv"])
 
 if uploaded_file:
-    df = pd.read_excel(uploaded_file)
-
-    required_cols = {"MID", "Address", "Pincode"}
-    if not required_cols.issubset(df.columns):
-        st.error(f"File must contain columns: {required_cols}")
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
     else:
-        # Build full address for geocoding
-        df["Full_Address"] = df["Address"].astype(str) + ", " + df["Pincode"].astype(str)
+        df = pd.read_excel(uploaded_file)
 
-        # === Geocode Addresses ===
-        def geocode_address(address):
-            url = "https://api.geoapify.com/v1/geocode/search"
-            params = {
-                "text": address,
-                "apiKey": GEOAPIFY_API_KEY,
-                "format": "json"
-            }
-            try:
-                resp = requests.get(url, params=params)
-                data = resp.json()
-                coords = data["features"][0]["geometry"]["coordinates"]
-                return coords[1], coords[0]  # (lat, lon)
-            except:
-                return None, None
+    expected_cols = {"MID", "Address", "Pincode"}
+    if not expected_cols.issubset(df.columns):
+        st.error(f"Excel must contain these columns: {expected_cols}")
+        st.stop()
 
-        with st.spinner("Geocoding addresses..."):
-            df[["Latitude", "Longitude"]] = df["Full_Address"].apply(lambda x: pd.Series(geocode_address(x)))
+    # Clean Address
+    df["Address"] = df["Address"].astype(str).fillna("").str.strip()
+    df["Pincode"] = df["Pincode"].astype(str).str.strip()
+    df["Full_Address"] = df["Address"] + ", " + df["Pincode"]
 
-        st.success("Geocoding completed.")
-        st.dataframe(df)
+    # === Geocode Addresses ===
+    def geocode_address(address):
+        url = "https://api.geoapify.com/v1/geocode/search"
+        params = {
+            "text": address,
+            "apiKey": GEOAPIFY_API_KEY,
+            "format": "json"
+        }
+        try:
+            response = requests.get(url, params=params)
+            data = response.json()
+            coords = data["features"][0]["geometry"]["coordinates"]
+            return coords[1], coords[0]  # lat, lon
+        except:
+            return None, None
 
-        valid_df = df.dropna(subset=["Latitude", "Longitude"])
-        if len(valid_df) < 2:
-            st.warning("Need at least two valid addresses for routing.")
-        else:
-            # === Get Route from Geoapify ===
-            def get_route(df):
-                latlons = [f"{row['Latitude']},{row['Longitude']}" for _, row in df.iterrows()]
-                waypoints = "|".join(latlons)
+    with st.spinner("Geocoding addresses..."):
+        df[["Latitude", "Longitude"]] = df["Full_Address"].apply(lambda x: pd.Series(geocode_address(x)))
 
-                url = "https://api.geoapify.com/v1/routing"
-                params = {
-                    "waypoints": waypoints,
-                    "mode": "drive",
-                    "apiKey": GEOAPIFY_API_KEY
-                }
-                resp = requests.get(url, params=params)
-                data = resp.json()
+    st.success("Geocoding completed.")
+    st.dataframe(df)
 
-                if "features" in data:
-                    props = data["features"][0]["properties"]
-                    coords = data["features"][0]["geometry"]["coordinates"]
-                    return props["distance"], props["time"], coords
-                return None, None, None
+    valid_df = df.dropna(subset=["Latitude", "Longitude"])
+    if len(valid_df) < 2:
+        st.warning("At least two valid addresses are needed to plan a route.")
+        st.stop()
 
-            # Plan Route
-            distance, time, route_coords = get_route(valid_df)
+    # === Route Planner ===
+    def get_route(df):
+        latlons = [f"{row['Latitude']},{row['Longitude']}" for _, row in df.iterrows()]
+        waypoints = "|".join(latlons)
+        url = "https://api.geoapify.com/v1/routing"
+        params = {
+            "waypoints": waypoints,
+            "mode": "drive",
+            "apiKey": GEOAPIFY_API_KEY
+        }
+        response = requests.get(url, params=params)
+        data = response.json()
+        if "features" in data:
+            props = data["features"][0]["properties"]
+            coords = data["features"][0]["geometry"]["coordinates"]
+            return props["distance"], props["time"], coords
+        return None, None, None
 
-            # === Display Map ===
-            st.subheader("🗺️ Route Map")
-            route_map = folium.Map(location=[valid_df.iloc[0]["Latitude"], valid_df.iloc[0]["Longitude"]], zoom_start=12)
+    distance, time, route_coords = get_route(valid_df)
 
-            # Mark points
-            for idx, row in valid_df.iterrows():
-                folium.Marker([row["Latitude"], row["Longitude"]], tooltip=f"MID: {row['MID']}").add_to(route_map)
+    # === Map ===
+    st.subheader("🗺️ Route Map")
+    route_map = folium.Map(location=[valid_df.iloc[0]["Latitude"], valid_df.iloc[0]["Longitude"]], zoom_start=12)
 
-            # Draw route
-            if route_coords:
-                polyline = [(lat, lon) for lon, lat in route_coords]
-                folium.PolyLine(polyline, color="blue", weight=4).add_to(route_map)
+    for _, row in valid_df.iterrows():
+        folium.Marker(
+            [row["Latitude"], row["Longitude"]],
+            tooltip=f"MID: {row['MID']}"
+        ).add_to(route_map)
 
-                st.success(f"🛣️ Total Distance: {distance/1000:.2f} km | Estimated Time: {time/60:.2f} minutes")
+    if route_coords:
+        polyline = [(lat, lon) for lon, lat in route_coords]
+        folium.PolyLine(polyline, color="blue", weight=4).add_to(route_map)
+        st.success(f"🚗 Distance: {distance / 1000:.2f} km | ⏱ Time: {time / 60:.2f} minutes")
+    else:
+        st.warning("No route found.")
 
-            folium_static(route_map)
+    folium_static(route_map)
+
+    # === Download Output ===
+    st.subheader("📥 Download Geocoded Data")
+    output = BytesIO()
+    df.to_excel(output, index=False)
+    st.download_button(
+        label="📄 Download Geocoded Excel",
+        data=output.getvalue(),
+        file_name="geocoded_output.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

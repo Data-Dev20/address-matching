@@ -129,7 +129,7 @@ with tabs[0]:
             vectorizer = TfidfVectorizer()
             tfidf_matrix = vectorizer.fit_transform(corpus)
             
-            df_new["Cluster"] = df_new.apply(lambda row: match_cluster(str(row["Address"]), str(row["Pincode"]),
+            df_new["Area_name"] = df_new.apply(lambda row: match_cluster(str(row["Address"]), str(row["Pincode"]),
                                                                         cluster_dict, vectorizer, tfidf_matrix, cluster_names), axis=1)
             status.empty()
             st.success("✅ Address clustering completed!")

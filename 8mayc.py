@@ -5,21 +5,34 @@ import folium
 from streamlit_folium import folium_static
 
 # === CONFIG ===
-GEOAPIFY_API_KEY = "YOUR_GEOAPIFY_API_KEY"  # Replace with your key
+GEOAPIFY_API_KEY = "6237e6cc370342cb96d6ae8b44539025"  # Replace with your key
 
 st.set_page_config(page_title="MID Route Planner", layout="wide")
 st.title("📍 MID-Based Route Planner")
-st.markdown("Upload a CSV file with `MID`, `Address`, and `Pincode` to plan delivery routes using Geoapify.")
+st.markdown("Upload a Excel file with `MID`, `Address`, and `Pincode` to plan delivery routes using Geoapify.")
 
 # === UPLOAD FILE ===
-uploaded_file = st.file_uploader("Upload CSV File", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload Execel File", type=["xlsx"])
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+    try:
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file, encoding='utf-8', errors='replace')
+        elif uploaded_file.name.endswith(".xlsx"):
+            df = pd.read_excel(uploaded_file)
+        else:
+            st.error("Unsupported file format.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
+        st.stop()
+
+if uploaded_file:
+    df = pd.read_excel(uploaded_file)
 
     expected_cols = {"MID", "Address", "Pincode"}
     if not expected_cols.issubset(df.columns):
-        st.error(f"CSV must contain these columns: {expected_cols}")
+        st.error(f"Execl must contain these columns: {expected_cols}")
     else:
         # Build full address for geocoding
         df["Full_Address"] = df["Address"].astype(str) + ", " + df["Pincode"].astype(str)
@@ -85,3 +98,10 @@ if uploaded_file:
                 st.success(f"🚗 Distance: {distance/1000:.2f} km | ⏱ Time: {time/60:.2f} minutes")
 
             folium_static(route_map)
+
+            st.download_button(
+            label="Export File",
+            data=output,
+            file_name="data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )

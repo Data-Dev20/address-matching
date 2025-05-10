@@ -11,8 +11,6 @@ else:
     st.warning("No merged data found. Please go back and upload files.")
 
 
-
-
 if "merged_df" in st.session_state:
     df = st.session_state["merged_df"]
     col = st.selectbox("Select column", df.columns)
