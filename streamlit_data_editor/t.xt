@@ -1,6 +1,0 @@
-from streamlit_extras.switch_page_button import switch_page  # Install this via: pip install streamlit-extras
-
-with col2:
-    if st.button("Continue"):
-        st.session_state["merged_df"] = merged_df
-        switch_page("Next Page")  # This should match the title of your next page Python file (e.g., pages/Next Page.py)

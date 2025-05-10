@@ -1,7 +1,17 @@
 import streamlit as st
 import pandas as pd
 
-st.title("🔁 Replace Text in Columns (Excel-style Filter)")
+st.set_page_config(page_title="🔁 Replace Text in Columns (Excel-style Filter)", layout="wide")
+st.title("🚀 Data Editor")
+
+if "merged_df" in st.session_state:
+    st.write("Here’s your merged data:")
+    st.dataframe(st.session_state["merged_df"])
+else:
+    st.warning("No merged data found. Please go back and upload files.")
+
+
+
 
 if "merged_df" in st.session_state:
     df = st.session_state["merged_df"]
@@ -21,7 +31,7 @@ else:
     st.warning("Please upload and merge files first.")
 
 
-col1, col2 = st.columns([1, 1])
+col1, col2, col3 = st.columns([1, 1, 1])
 
 with col1:
     if st.button("Save Changes"):
@@ -30,3 +40,8 @@ with col1:
 with col2:
     if st.button("Continue"):
         st.info("Continuing to next step...")
+
+with col3:
+    if st.button("⬅️ Go Back to File Upload"):
+    from streamlit_extras.switch_page_button import switch_page
+    switch_page("1_Data_Editor.py")

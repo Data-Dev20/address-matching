@@ -2,7 +2,24 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-st.title("🧹 Data Editor")
+
+st.set_page_config(page_title="Next Step", layout="wide")
+st.title("🚀 Data Editor")
+
+# Flag to simulate navigation
+if "goto_next" not in st.session_state:
+    st.session_state.goto_next = False
+
+if "merged_df" in st.session_state:
+    st.write("Here’s your merged data:")
+    st.dataframe(st.session_state["merged_df"])
+else:
+    st.warning("No merged data found. Please go back and upload files.")
+
+if st.button("⬅️ Go Back to File Upload"):
+    from streamlit_extras.switch_page_button import switch_page
+    switch_page("1_File_Uploader.py")
+
 
 if "merged_df" in st.session_state:
     df = st.session_state["merged_df"].copy()
@@ -73,3 +90,6 @@ with col2:
     if st.button("Continue"):
         st.session_state["merged_df"] = edited_df
         st.info("Continuing to next step...")
+
+if st.session_state.get("goto_next", False):
+    st.markdown("""<meta http-equiv="refresh" content="0; url='/page/2_🔁_Replace_Text'" />""", unsafe_allow_html=True)
