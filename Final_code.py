@@ -33,7 +33,8 @@ def preprocess_address(address):
         'ch' : 'church', ' bldg ': ' building ', 'mg' : 'mahatma gandhi', 
         'stn' : 'station', 'sv' : 'swami vivekananda', 'mg' : 'mahatma gandhi', 
         'govt' : 'government', 'talkies' : 'cinema', 'flr' : 'floor', 
-        'sec' : 'sector', 'road' : 'marg', 'village' : 'nagar', 'lane' : 'road',  
+        'sec' : 'sector', 'road' : 'marg', 'village' : 'nagar', 'lane' : 'road',
+        'street' : 'road', 'avenue' : 'road', 'square' : 'road', 
     }
     address = str(address).lower()
     address = ' ' + address + ' '
@@ -244,6 +245,24 @@ if uploaded_file:
         st.subheader("📊 Assignment Statistics")
         day_stats = final_df.groupby(['Agent', 'Day'])['Weight'].sum().reset_index()
         st.write("Weight by Agent and Day:")
+         # Display weight distribution by Agent and Day
+        fig = px.bar(day_stats, x="Agent", y="Weight", color="Day", barmode="group",
+                     title="Total Assigned Weight by Agent per Day")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Download final result
+        st.subheader("📥 Download Assignment File")
+        buffer = BytesIO()
+        final_df.to_excel(buffer, index=False)
+        buffer.seek(0)
+        st.download_button(
+            label="Download Excel File",
+            data=buffer,
+            file_name="Assigned_Deliveries.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        st.subheader("📊 Assignment Statistics")
         st.dataframe(day_stats)
         
         # Summary for vehicle vs normal days
