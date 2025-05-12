@@ -6,7 +6,6 @@ st.set_page_config(page_title="Data Processing App", layout="wide")
 st.title("📊 Data Processing App")
 st.markdown("Navigate through the sidebar to use different tools:")
 
-
 st.title("📁 Upload and Merge Files")
 
 # Flag to simulate navigation
@@ -14,9 +13,9 @@ if "goto_next" not in st.session_state:
     st.session_state.goto_next = False
 
 # File upload
-uploaded_files = st.file_uploader("Upload CSV or Excel files (min 2)", type=["csv", "xlsx"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload CSV or Excel files", type=["csv", "xlsx"], accept_multiple_files=True)
 
-if uploaded_files and len(uploaded_files) >= 2:
+if uploaded_files and len(uploaded_files) >= 1:
     st.success(f"{len(uploaded_files)} files uploaded.")
     merge_files = st.radio("Do you want to merge these files?", ["Yes", "No"])
 
@@ -30,6 +29,14 @@ if uploaded_files and len(uploaded_files) >= 2:
                     dfs.append(pd.read_excel(file))
                 else:
                     dfs.append(pd.read_csv(file))
+
+            # Clean columns by removing any 'Unnamed' columns and stripping spaces
+            for idx, df in enumerate(dfs):
+                # Drop columns where the column name is 'Unnamed' or empty
+                df.columns = df.columns.str.strip()  # Remove leading/trailing spaces
+                df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+                dfs[idx] = df  # Replace with cleaned DataFrame
+
             merged_df = pd.concat(dfs, ignore_index=True)
             st.session_state["merged_df"] = merged_df
             status.empty()

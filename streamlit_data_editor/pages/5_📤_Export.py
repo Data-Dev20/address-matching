@@ -19,3 +19,11 @@ if "merged_df" in st.session_state:
         st.download_button("Download Excel", output.getvalue(), file_name=f"{filename}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 else:
     st.warning("Please process data before exporting.")
+
+if st.button("⬅️ Go Back to File Upload"):
+        from streamlit_extras.switch_page_button import switch_page
+        switch_page("1_Data_Editor.py")
+
+# Simulate page change (if needed)
+if st.session_state.get("goto_next", False):
+    st.markdown("""<meta http-equiv="refresh" content="0; url='/page/1_🧹_Data_Editor'" />""", unsafe_allow_html=True)

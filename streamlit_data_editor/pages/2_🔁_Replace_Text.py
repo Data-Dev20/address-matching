@@ -2,7 +2,11 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="🔁 Replace Text in Columns (Excel-style Filter)", layout="wide")
-st.title("🚀 Data Editor")
+st.title("🔁 Replace Value")
+
+# Flag to simulate navigation
+if "goto_next" not in st.session_state:
+    st.session_state.goto_next = False
 
 if "merged_df" in st.session_state:
     st.write("Here’s your merged data:")
@@ -29,6 +33,7 @@ else:
     st.warning("Please upload and merge files first.")
 
 
+
 col1, col2, col3 = st.columns([1, 1, 1])
 
 with col1:
@@ -38,8 +43,16 @@ with col1:
 with col2:
     if st.button("Continue"):
         st.info("Continuing to next step...")
+        st.switch_page("pages/3_➕_Add_Columns.py")
+
+        # Alternatively, simulate navigation (if not using multipage)
+        st.session_state.goto_next = True
 
 with col3:
     if st.button("⬅️ Go Back to File Upload"):
-    from streamlit_extras.switch_page_button import switch_page
-    switch_page("1_Data_Editor.py")
+        from streamlit_extras.switch_page_button import switch_page
+        switch_page("2_🔁_Replace_Text.py")
+
+# Simulate page change (if needed)
+if st.session_state.get("goto_next", False):
+    st.markdown("""<meta http-equiv="refresh" content="0; url='/page/3_➕_Add_Columns'" />""", unsafe_allow_html=True)
