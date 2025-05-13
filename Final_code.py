@@ -55,7 +55,7 @@ def geocode_address(full_address):
         return None, None
 
 # Updated assign_agents function with separate day types and weight limits
-def assign_agents(df, agent_count, rolls_per_agent=200, min_normal_weight=15, max_normal_weight=30):
+def assign_agents(df, agent_count, rolls_per_agent=200, min_normal_weight=15, max_normal_weight=25):
     # Make a copy to avoid modifying the original
     df_sorted = df.copy()
     
@@ -200,6 +200,7 @@ if uploaded_file:
         st.success("File uploaded successfully!")
 
         st.subheader("🧹 Preprocessing Addresses")
+        
         df['Address'] = df['Address'].astype(str).apply(preprocess_address)
         df['City'] = df['City'].astype(str).str.lower()
         df['Pincode'] = df['Pincode'].astype(str)
@@ -284,6 +285,8 @@ if uploaded_file:
         )
         fig.update_layout(mapbox_style="open-street-map")
         st.plotly_chart(fig)
+
+        
 
         st.subheader("📥 Download Final Assigned File")
         output = BytesIO()
